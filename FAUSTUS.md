@@ -23,4 +23,6 @@ La convección de coeficiente cero no fija temperatura. Un requisito de factor d
 - Identificación de parámetros desde medidas reales.
 
 ## Herramientas MCP
+Integración de familia1987: panel canónico mediante `/api/copilot`, borrador actual y última operación con su entrada exacta. El panel usa Faustus y sus modelos globales. Descubrir MCP no arranca HTTP; el Hub dispone de arranque explícito con puerto adaptable. Contrato HTTP agent no implementado; las10 herramientas propias se exponen por MCPstdio. Candidato pendiente de revisión e integración.
+
 maxwell_examples, maxwell_materials, maxwell_check, maxwell_solve, maxwell_refinement, maxwell_compare, maxwell_design_search, maxwell_verify_reference, maxwell_import_geometry, maxwell_records.

@@ -2,6 +2,8 @@
 
 Status: candidate under review (ecosystem1935 and corrections1982/1985 in the maxwell space), not yet integrated or registered in the Hub. Native Faustus project1548272a539c is linked to that space.
 
+Family integration1987 adds the canonical Faustus panel and an explicit, port-adaptable Hub launch hint. The panel receives the current problem, variants and search draft, including incomplete JSON, plus the last operation with its exact input and compact result. Editing a draft does not relabel an older result as its calculation. The conversation, model and tools remain in Faustus; Maxwell adds no conversation loop. MCP discovery still starts no HTTP application. Registration and integration remain pending.
+
 Physical engineering for plate-like parts, on your own PC: **steady heat conduction** and **plane-stress linear elasticity** solved with quadratic finite elements, with every condition stated, every result checked against a balance, and a solver that is trusted only as far as its analytical references pass.
 
 Maxwell keeps the geometry, materials, supports, loads, heat sources, mesh and assumptions next to every result, stores the exact input of each study, and turns a missing fact (how the part is held, where the heat leaves) into a concrete question instead of an invisible guess.

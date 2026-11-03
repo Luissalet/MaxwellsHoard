@@ -7,7 +7,7 @@ name = "maxwell-hoard"
 version = "0.1.0"
 description = "Local physical engineering: steady heat conduction and linear elasticity with verified references"
 requires-python = ">=3.11"
-dependencies = ["numpy>=2.0", "scipy>=1.13", "fastapi==0.162.0", "uvicorn==0.54.0", "mcp==2.3.0"]
+dependencies = ["numpy>=2.0", "scipy>=1.13", "fastapi==0.162.0", "uvicorn==0.54.0", "mcp==2.3.0", "httpx==0.28.1"]
 
 [project.optional-dependencies]
 test = ["pytest", "httpx"]
@@ -17,6 +17,7 @@ include = ["maxwell*"]
 
 [tool.setuptools.package-data]
 maxwell = ["static/*"]
+"maxwell.hoard_link" = ["LICENSE", "VENDORED.txt", "_data/*", "ui/*", "ui/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

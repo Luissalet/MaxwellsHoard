@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pathlib
+import os
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
@@ -10,10 +11,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import service
+from .hoard_link.copilot import install_copilot
 
 STATIC = pathlib.Path(__file__).resolve().parent / "static"
 app = FastAPI(title="Maxwell's Hoard", version=service.VERSION)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+install_copilot(app, "maxwell", os.environ.get("MAXWELL_DATA", str(STATIC.parents[1] / "data")), app_name="Maxwell's Hoard")
 
 
 class SolveIn(BaseModel):

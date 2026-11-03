@@ -127,7 +127,7 @@
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let examples = [], current = null;
+let examples = [], current = null, lastOperation = null;
 
 function fmt(v, unit = '') {
   if (v === null || v === undefined) return '—';
@@ -148,6 +148,12 @@ function readJSON(id) {
 async function api(path, body) {
   const r = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
+  if (body !== undefined) {
+    const result = j.detail || j;
+    lastOperation = { path, input: structuredClone(body), status: result.status, record_id: result.record_id,
+      summary: result.summary, verdict: result.verdict, quantities: result.quantities,
+      error: result.error, questions: result.questions };
+  }
   if (!r.ok) { const d = j.detail || j; const err = new Error(d.error || (typeof d === 'string' ? d : JSON.stringify(d))); err.questions = d.questions || []; throw err; }
   return j;
 }
@@ -343,6 +349,14 @@ async function loadRecords() {
   const recs = await api('/api/records?limit=60');
   $('#pane-records').innerHTML = recs.length ? `<table><tr><th>when</th><th>kind</th><th>name</th><th>id</th></tr>${recs.map((r) => `<tr><td>${esc(r.created)}</td><td>${esc(r.kind)}</td><td>${esc(r.name)}</td><td><a href="/api/records/${encodeURIComponent(r.id)}" target="_blank" style="color:var(--hoard-accent)"><code>${esc(r.id)}</code></a></td></tr>`).join('')}</table>` : '<p class="muted">No saved studies yet.</p>';
 }
+window.hoardCopilot = {
+  context: async () => ({
+    editor: { kind: 'physical_problem', draft: $('#problem').value,
+      variants: $('#variants').value, search: $('#search').value },
+    selected_example: $('#example').value,
+    last_operation: lastOperation && structuredClone(lastOperation),
+  }),
+};
 loadExamples().catch((e) => setStatus(e.message, 'bad'));
 loadRefs().catch((e) => ($('#pane-refs').textContent = e.message));
 </script>
