@@ -353,8 +353,8 @@ window.hoardCopilot = {
   context: async () => ({
     editor: { kind: 'physical_problem', draft: $('#problem').value,
       variants: $('#variants').value, search: $('#search').value },
-    selected_example: $('#example').value,
-    last_operation: lastOperation && structuredClone(lastOperation),
+    view: { selected_example: $('#example').value,
+      last_operation: lastOperation && structuredClone(lastOperation) },
   }),
 };
 loadExamples().catch((e) => setStatus(e.message, 'bad'));
