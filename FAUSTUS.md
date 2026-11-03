@@ -2,7 +2,7 @@
 
 Lecturas MCP declaradas: maxwell_examples, maxwell_materials y maxwell_check. Disponibles en modoPlan sin crear estudios. Resolver y ejecutar estudios mantiene su persistencia; no se modifica la política de permisos de Faustus. Conjunto66pruebas positivas.
 
-Estado: v0.1.0, candidato (no registrado en Hub). Arranque explícito `python -m maxwell` (puerto 5243). MCP stdio `python -m maxwell.mcp_server`.
+Estado: v0.1.0, integrado en main y visible en el Hub (arranque explícito). Arranque explícito `python -m maxwell` (puerto 5243). MCP stdio `python -m maxwell.mcp_server`.
 
 Correcciones1982 preparadas sobrea86a49f; revisión e integración pendientes junto a la baseecosystem1935. Espacio propio maxwell y proyectoFaustus1548272a539c.51pruebas positivas, incluidas15de revisión y MCPstdio real; interfaz probada enBrave con datos inventados.
 
@@ -25,6 +25,6 @@ La convección de coeficiente cero no fija temperatura. Un requisito de factor d
 - Identificación de parámetros desde medidas reales.
 
 ## Herramientas MCP
-Integración de familia1987: panel canónico mediante `/api/copilot`, borrador actual y última operación con su entrada exacta. El panel usa Faustus y sus modelos globales. Descubrir MCP no arranca HTTP; el Hub dispone de arranque explícito con puerto adaptable. Contrato HTTP agent no implementado; las10 herramientas propias se exponen por MCPstdio. Candidato pendiente de revisión e integración.
+Integración de familia1987: panel canónico mediante `/api/copilot`, borrador actual y última operación con su entrada exacta. El panel usa Faustus y sus modelos globales. Descubrir MCP no arranca HTTP; el Hub dispone de arranque explícito con puerto adaptable. Contrato HTTP agent no implementado; las10 herramientas propias se exponen por MCPstdio.
 
 maxwell_examples, maxwell_materials, maxwell_check, maxwell_solve, maxwell_refinement, maxwell_compare, maxwell_design_search, maxwell_verify_reference, maxwell_import_geometry, maxwell_records.
