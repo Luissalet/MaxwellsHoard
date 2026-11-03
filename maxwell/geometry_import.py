@@ -105,17 +105,38 @@ def _rectangles(void, us_edges, vs_edges):
 def profile_from_stl(data: bytes, resolution_mm: float | None = None, thin_axis: str | None = None,
                      units: str = "mm", name: str = "imported part") -> dict:
     tris = parse_stl(data)
+    if not np.isfinite(tris).all():
+        raise ProblemError("STL vertices must be finite")
     scale = {"mm": 1e-3, "m": 1.0, "in": 0.0254}.get(units)
     if scale is None:
         raise ProblemError("units must be mm, m or in")
     lo, hi = tris.reshape(-1, 3).min(0), tris.reshape(-1, 3).max(0)
     ext = hi - lo
     axes = "xyz"
-    t_ax = axes.index(thin_axis) if thin_axis else int(np.argmin(ext))
+    if thin_axis is not None and thin_axis not in ("x", "y", "z"):
+        raise ProblemError("thin_axis must be x, y or z")
+    t_ax = axes.index(thin_axis) if thin_axis is not None else int(np.argmin(ext))
     plane = [a for a in range(3) if a != t_ax]
     if ext[t_ax] <= 0 or min(ext[plane]) <= 0:
         raise ProblemError("the mesh is flat in more than one direction")
-    res = resolution_mm if resolution_mm else min(ext[plane]) / 40.0
+    # Every face of a straight extrusion is either on an end plane or
+    # parallel to the extrusion axis. Three sample sections alone miss a
+    # shallow blind pocket, a thin floor or a taper smaller than one cell.
+    coord_tol = max(float(ext.max()) * 2e-7,
+                    float(np.spacing(np.abs(tris).max())) * 4)
+    w = tris[:, :, t_ax]
+    cap = (np.abs(w - lo[t_ax]) <= coord_tol).all(axis=1) | (np.abs(w - hi[t_ax]) <= coord_tol).all(axis=1)
+    normal = np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0])
+    norm = np.linalg.norm(normal, axis=1)
+    # Binary STL uses float32 coordinates; small CSG triangles can amplify
+    # their rounding in the face normal. Allow one part per million in angle.
+    side = np.abs(normal[:, t_ax]) <= norm * 1e-6
+    if not (cap | side).all():
+        raise ProblemError("the STL has interior caps or sloping faces: this is not a constant-thickness plate",
+                           ["Provide a straight extrusion with through openings, or use a solid 3D analysis for this part."])
+    res = resolution_mm if resolution_mm is not None else min(ext[plane]) / 40.0
+    if not np.isfinite(res) or res <= 0:
+        raise ProblemError("resolution_mm must be finite and positive")
     nu, nv = int(np.ceil(ext[plane[0]] / res)), int(np.ceil(ext[plane[1]] / res))
     if nu * nv > MAX_SAMPLES:
         raise ProblemError(f"{nu * nv} samples exceed {MAX_SAMPLES}; use a coarser resolution")
@@ -169,6 +190,8 @@ def profile_from_stl(data: bytes, resolution_mm: float | None = None, thin_axis:
         "thin_axis": axes[t_ax], "profile_axes": [axes[plane[0]], axes[plane[1]]],
         "bbox": [float(e * scale) for e in ext], "resolution": [float(du * scale), float(dv * scale)],
         "void_rectangles": len(regions), "through_thickness_mismatch": mismatch,
+        "extrusion_faces_checked": True, "extrusion_coordinate_tolerance": coord_tol * scale,
+        "extrusion_normal_tolerance": 1e-6,
         "mesh_volume": volume * scale ** 3, "profile_volume": area * ext[t_ax] * scale ** 3,
         "notes": [f"Curved edges are approximated by steps of {du:.3g} x {dv:.3g} {units}.",
                   "Stepped edges add artificial corners: peak stresses next to curved openings are overestimated; temperatures, displacements and mass are not affected the same way.",

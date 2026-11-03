@@ -12,6 +12,7 @@ Correcciones1982 preparadas sobrea86a49f; revisión e integración pendientes ju
 - Comparar variantes por rutas con veredicto frente a requisitos.
 - Diseño inverso paramétrico (1-3 parámetros) con revalidación en malla fina y casos de carga reservados; frontera de compromisos factibles.
 - Importar perfiles de espesor constante desde STL o desde un modelo de Vulcan's Hoard (API local, `VULCAN_URL`).
+- Validar todas las caras de la extrusión antes del muestreo: rechazar fondos, vaciados ciegos y paredes inclinadas aunque coincidan tres secciones. Las tolerancias geométricas declaradas admiten el redondeo de STL float32.
 - Guardar cada estudio con su entrada exacta.
 
 La convección de coeficiente cero no fija temperatura. Un requisito de factor de seguridad pregunta por cualquier resistencia de material que falte; sin ese requisito se pueden calcular desplazamientos, pero el factor global queda indefinido. El refinamiento exige niveles crecientes y mallas distintas. El balance térmico sin flujo informa su resolución numérica. Los registros tienen IDs únicos y publicación atómica, preservando lectores deIDs anteriores.
