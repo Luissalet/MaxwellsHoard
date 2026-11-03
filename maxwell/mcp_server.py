@@ -2,25 +2,26 @@
 from __future__ import annotations
 
 from mcp.server.mcpserver import MCPServer
+from mcp_types import ToolAnnotations
 
 from . import service
 
 mcp = MCPServer("Maxwell's Hoard")
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 def maxwell_examples(example_id: str | None = None) -> dict | list:
     """List the worked commissions (board ventilation, bracket) or return one with its problem, variants and search setup."""
     return service.example(example_id) if example_id else service.example_list()
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 def maxwell_materials() -> list[dict]:
     """Nominal material library (E, nu, density, conductivity k, yield). Values are typical, not certified."""
     return service.materials()
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 def maxwell_check(problem: dict) -> dict:
     """Validate a problem without solving. Missing supports, materials or heat paths come back as concrete questions."""
     return service.check(problem)

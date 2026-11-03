@@ -1,5 +1,7 @@
 # Maxwell's Hoard
 
+MCP declares examples, materials and coarse problem checking as pure reads (`readOnlyHint=true`), available to Faustus in Plan mode. These helpers create no study data. Solving and saved studies retain their existing persistence; their effects are not relabelled as reads. The combined suite passes66tests, including the real MCP wire contract.
+
 Status: candidate under review (ecosystem1935 and corrections1982/1985 in the maxwell space), not yet integrated or registered in the Hub. Native Faustus project1548272a539c is linked to that space.
 
 Family integration1987 adds the canonical Faustus panel and an explicit, port-adaptable Hub launch hint. The panel receives the current problem, variants and search draft, including incomplete JSON, plus the last operation with its exact input and compact result. Editing a draft does not relabel an older result as its calculation. The conversation, model and tools remain in Faustus; Maxwell adds no conversation loop. MCP discovery still starts no HTTP application. Registration and integration remain pending.
