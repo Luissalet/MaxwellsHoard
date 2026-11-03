@@ -1,8 +1,6 @@
 # Objetivos futuros
 
-Entrega inmediata: revisar e integrar las correcciones1982/1985 y la baseecosystem1935; después registrar el Hoard y su conexión de herramientas. No dar por integrado el candidato por tener64pruebas positivas. La transferencia real desde Vulcan ya comprueba el rechazo de una caja con fondo y la aceptación de una placa con hueco pasante.
-
-La integración común1987 incorpora panel, contexto del borrador y arranque explícito adaptable. Su validación del host añade una prueba; suite65 positiva. La aprobación e integración no se deducen de estas pruebas.
+Base, correcciones, panel y herramientas integrados enMain. Conector nativo y arranque explícito delHub comprobados por separado. El estado de integración no equivale a aprobación de revisión ni a prueba física. README/FAUSTUS describen la disponibilidad actual.
 
 1. Mallado no estructurado (triángulos ajustados a contornos curvos) para huecos circulares exactos y tensiones fiables junto a ellos.
 2. Conducción con radiación explícita y convección dependiente de la temperatura (no lineal, con iteración y criterio de convergencia declarado).
