@@ -30,14 +30,16 @@ def maxwell_check(problem: dict) -> dict:
 def maxwell_solve(problem: dict, refine: float = 1.0) -> dict:
     """Solve steady heat conduction ('thermal') or plane-stress linear elasticity ('elastic') on a rectangular profile with
     rectangular regions (materials, voids, heat sources, face convection). SI units, temperatures in C.
-    Returns summary quantities, probes, requirement verdicts, energy/force balance and the assumptions. Saved as a record."""
+    Returns summary quantities, probes, requirement verdicts, energy/force balance and the assumptions. A safety-factor
+    requirement needs yield strength for every material; zero convection does not anchor temperature. Saved as a record."""
     res = service.solve(problem, refine, field=False)
     return res
 
 
 @mcp.tool()
 def maxwell_refinement(problem: dict, quantities: list[str] | None = None, levels: list[float] | None = None) -> dict:
-    """Mesh-refinement study: values per level, observed order, extrapolated value, and whether a peak is converging or singular."""
+    """Mesh-refinement study: strictly increasing levels must produce finer meshes. Returns values, observed order,
+    extrapolation, and whether a peak is converging or singular; repeated meshes do not establish convergence."""
     return service.study_refinement(problem, quantities, levels or [1, 2, 4])
 
 

@@ -1,5 +1,7 @@
 # Maxwell's Hoard
 
+Status: candidate under review (ecosystem1935 and correction1982 in the maxwell space), not yet integrated or registered in the Hub. Native Faustus project1548272a539c is linked to that space.
+
 Physical engineering for plate-like parts, on your own PC: **steady heat conduction** and **plane-stress linear elasticity** solved with quadratic finite elements, with every condition stated, every result checked against a balance, and a solver that is trusted only as far as its analytical references pass.
 
 Maxwell keeps the geometry, materials, supports, loads, heat sources, mesh and assumptions next to every result, stores the exact input of each study, and turns a missing fact (how the part is held, where the heat leaves) into a concrete question instead of an invisible guess.
@@ -57,3 +59,13 @@ Invalid or incomplete problems answer 422 with `{status, error, questions}`.
 - Geometry is rectangles (exact) or a stepped approximation of an imported profile; curved openings raise local peak stresses.
 - Material values are nominal datasheet figures; confirm them for real parts. A convergent solver can still solve the wrong problem: the conditions are the engineer's responsibility, which is why they are always shown.
 - Pure Python (NumPy/SciPy, BSD licences); no external meshing or solver binaries.
+
+## Corrections awaiting integration (1982)
+
+Zero-convection edges do not determine a temperature: an isolated body asks where heat leaves instead of returning an arbitrary zero. A valid, isothermal zero-flow solution is accepted within a rounding bound derived from the assembled system; the report includes absolute residual, rounding bound and whether relative balance is rounding-limited.
+
+A global safety factor requires yield strength for every material. Without a strength requirement, displacements remain available and the factor is undefined when a material strength is missing. A requested factor asks for the missing strength. Supplied strengths must be finite and positive.
+
+Refinement levels must increase strictly and produce finer meshes. Repeated meshes do not establish convergence. Stored studies have unique IDs and are published atomically, including repeated calculations within one second; old record IDs remain readable.
+
+Validation:51 tests pass, including15 review regressions, real MCP stdio and discovery without creating data. Brave on an isolated instance: zero convection asks for a heat path, a mixed-material beam asks for unknown yield strength, and an anchored zero-flow plate solves uniformly at20°C. These checks use invented cases and analytical references, not measurements of a real part. No models or GPUs were used.

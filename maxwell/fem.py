@@ -299,8 +299,9 @@ def solve_thermal(p, mesh):
         vals = vals[first]
     ncomp, labels = _pieces(mesh)
     cooled = _pieces_touching(mesh, labels, fixed)
-    for ids, _, _ in edge_conv:
-        cooled |= _pieces_touching(mesh, labels, ids)
+    for ids, _, condition in edge_conv:
+        if condition["h"] > 0:
+            cooled |= _pieces_touching(mesh, labels, ids)
     cooled |= set(labels[face_h > 0].tolist())
     if len(cooled) < ncomp:
         raise ProblemError("part of the body has no fixed temperature and no convection: its temperature is undetermined",
@@ -321,7 +322,13 @@ def solve_thermal(p, mesh):
     inflow = q_src + q_flux
     outflow = q_edge_conv + q_face + q_fixed
     throughput = abs(q_src) + abs(q_flux) + abs(q_edge_conv) + abs(q_face) + abs(q_fixed)
-    if throughput > 0 and abs(inflow - outflow) / throughput > 1e-6:
+    # With zero physical heat flow, a tiny cancellation residual must not be
+    # divided by that same tiny residual and reported as a 100% imbalance.
+    Kc = K.tocsr()
+    roundoff = float(64 * np.finfo(float).eps * (
+        np.abs(f).sum() + (np.abs(Kc.data) * np.abs(T[Kc.indices])).sum()))
+    imbalance = abs(inflow - outflow)
+    if imbalance > max(1e-6 * throughput, roundoff):
         raise ProblemError("the solution does not balance the heat flows: the model is ill-conditioned")
     region_avg = {}
     for rid, m in elem_region.items():
@@ -334,7 +341,9 @@ def solve_thermal(p, mesh):
         "region_avg_temperature": region_avg,
         "heat_balance": {"sources_W": q_src, "flux_in_W": q_flux, "edge_convection_out_W": q_edge_conv,
                          "face_convection_out_W": q_face, "fixed_temperature_out_W": q_fixed,
-                         "relative_residual": abs(inflow - outflow) / max(throughput, 1e-30)},
+                         "relative_residual": imbalance / throughput if throughput > roundoff else 0.0,
+                         "absolute_residual_W": imbalance, "roundoff_bound_W": roundoff,
+                         "roundoff_limited": bool(throughput <= roundoff)},
     }
     return {"T": T, "summary": summary}
 
@@ -441,8 +450,12 @@ def solve_elastic(p, mesh):
     mass = float((rho * mesh.area * t).sum()) if not np.isnan(rho).any() else None
     yields = _material_arrays(p, mesh, "yield")
     sf = None
-    if not np.isnan(yields).all():
-        ratio = vm_nodes.max(1) / np.where(np.isnan(yields), np.inf, yields)
+    missing_strength = sorted(set(mesh.mat[np.isnan(yields)]))
+    if missing_strength and any(r["quantity"] == "safety_factor" for r in p["requirements"]):
+        raise ProblemError("safety_factor needs yield strength for every material",
+                           [f"What is the yield strength (Pa) of {m}?" for m in missing_strength])
+    if not missing_strength:
+        ratio = vm_nodes.max(1) / yields
         worst = ratio.max()
         sf = float(1 / worst) if worst > 0 else None
     summary = {

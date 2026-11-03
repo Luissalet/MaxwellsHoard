@@ -8,6 +8,7 @@ import json
 import os
 import pathlib
 import re
+import uuid
 
 from . import examples
 from .fem import run
@@ -32,11 +33,14 @@ def _strip(result):
 def _save(kind: str, inp: dict, out: dict) -> str:
     stamp = dt.datetime.now(dt.timezone.utc)
     digest = hashlib.sha256(json.dumps(inp, sort_keys=True).encode()).hexdigest()[:8]
-    rid = f"{stamp:%Y%m%d-%H%M%S}-{kind}-{digest}"
+    rid = f"{stamp:%Y%m%d-%H%M%S}-{kind}-{digest}-{uuid.uuid4().hex}"
     name = (inp.get("problem") or {}).get("name") or inp.get("case") or kind
     rec = {"id": rid, "kind": kind, "name": name, "created": stamp.isoformat(timespec="seconds"),
            "version": VERSION, "input": inp, "output": _strip(out)}
-    (data_dir() / "records" / f"{rid}.json").write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
+    target = data_dir() / "records" / f"{rid}.json"
+    pending = target.with_suffix(".tmp")
+    pending.write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding="utf-8")
+    os.replace(pending, target)
     return rid
 
 

@@ -120,14 +120,20 @@ def verify_reference(case: str, refine: float = 1.0) -> dict:
 def refinement(problem: dict, quantities: list[str] | None = None, levels=(1, 2, 4), reference: dict | None = None) -> dict:
     if len(levels) < 2 or len(levels) > 4:
         raise ProblemError("give between 2 and 4 refinement levels")
-    if any(not (0 < float(lv) <= 8) for lv in levels) or list(levels) != sorted(levels):
-        raise ProblemError("refinement levels must be increasing and between 0 and 8")
+    try:
+        levels = [float(lv) for lv in levels]
+    except (TypeError, ValueError):
+        raise ProblemError("refinement levels must be numeric") from None
+    if any(not (0 < lv <= 8) for lv in levels) or any(b <= a for a, b in zip(levels, levels[1:])):
+        raise ProblemError("refinement levels must be strictly increasing and between 0 and 8")
     p = validate(problem)
     if not quantities:
         quantities = ["max_temperature"] if p["physics"] == "thermal" else ["max_displacement", "max_von_mises"]
     rows = []
     for lv in levels:
         res = run(problem, refine=float(lv), field=False)
+        if rows and res["mesh"]["unknowns"] <= rows[-1]["unknowns"]:
+            raise ProblemError("refinement levels produce the same mesh; choose levels that increase the mesh resolution")
         rows.append({"refine": lv, "size": res["mesh"]["size"], "unknowns": res["mesh"]["unknowns"],
                      "seconds": res["seconds"], "values": {q: _q(res, q) for q in quantities}})
     report = {}

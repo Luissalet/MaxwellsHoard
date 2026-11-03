@@ -142,7 +142,7 @@ def validate(problem: dict) -> dict:
         if missing:
             raise ProblemError(f"material {key} lacks {', '.join(missing)}",
                                [f"What is the {n} of {key}?" for n in missing])
-        for prop, lo, hi in (("E", 0, None), ("k", 0, None), ("density", -1e-300, None)):
+        for prop, lo, hi in (("E", 0, None), ("k", 0, None), ("density", -1e-300, None), ("yield", 0, None)):
             v = mat.get(prop)
             if v is not None and (_num(v, f"{key}.{prop}") <= lo):
                 raise ProblemError(f"material {key}: {prop} must be > 0")

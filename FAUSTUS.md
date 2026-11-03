@@ -2,6 +2,8 @@
 
 Estado: v0.1.0, candidato (no registrado en Hub). Arranque explícito `python -m maxwell` (puerto 5243). MCP stdio `python -m maxwell.mcp_server`.
 
+Correcciones1982 preparadas sobrea86a49f; revisión e integración pendientes junto a la baseecosystem1935. Espacio propio maxwell y proyectoFaustus1548272a539c.51pruebas positivas, incluidas15de revisión y MCPstdio real; interfaz probada enBrave con datos inventados.
+
 ## Puede
 - Resolver conducción térmica estacionaria 2D (fuentes por región, convección en bordes y caras, flujo, temperaturas fijas) con balance de energía.
 - Resolver elasticidad lineal en tensión plana (empotramientos, apoyos deslizantes, fuerzas, presión, gravedad) con equilibrio de fuerzas, von Mises, masa y factor de seguridad.
@@ -11,6 +13,8 @@ Estado: v0.1.0, candidato (no registrado en Hub). Arranque explícito `python -m
 - Diseño inverso paramétrico (1-3 parámetros) con revalidación en malla fina y casos de carga reservados; frontera de compromisos factibles.
 - Importar perfiles de espesor constante desde STL o desde un modelo de Vulcan's Hoard (API local, `VULCAN_URL`).
 - Guardar cada estudio con su entrada exacta.
+
+La convección de coeficiente cero no fija temperatura. Un requisito de factor de seguridad pregunta por cualquier resistencia de material que falte; sin ese requisito se pueden calcular desplazamientos, pero el factor global queda indefinido. El refinamiento exige niveles crecientes y mallas distintas. El balance térmico sin flujo informa su resolución numérica. Los registros tienen IDs únicos y publicación atómica, preservando lectores deIDs anteriores.
 
 ## No puede (todavía)
 - 3D, fluidos, radiación explícita, contacto, pandeo, plasticidad, fatiga, transitorios, propiedades dependientes de temperatura.
