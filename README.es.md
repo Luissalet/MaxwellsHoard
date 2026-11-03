@@ -2,7 +2,7 @@
 
 Ingeniería física de piezas planas en tu propio PC: **conducción térmica estacionaria** y **elasticidad lineal en tensión plana**, resueltas con elementos finitos cuadráticos, con todas las condiciones a la vista, cada resultado comprobado contra un balance y un solver en el que solo se confía hasta donde pasan sus referencias analíticas.
 
-Un mapa de colores sin sus condiciones no es un análisis. Maxwell guarda junto a cada resultado la geometría, materiales, apoyos, cargas, fuentes de calor, malla e hipótesis; almacena la entrada exacta de cada estudio y convierte el dato que falta (cómo se sujeta la pieza, por dónde sale el calor) en una pregunta concreta en vez de un supuesto invisible.
+Maxwell guarda junto a cada resultado la geometría, materiales, apoyos, cargas, fuentes de calor, malla e hipótesis; almacena la entrada exacta de cada estudio y convierte el dato que falta (cómo se sujeta la pieza, por dónde sale el calor) en una pregunta concreta en vez de un supuesto invisible.
 
 ## Qué hace
 
