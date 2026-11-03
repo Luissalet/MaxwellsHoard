@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "id": "maxwell",
+  "name": "Maxwell's Hoard",
+  "purpose": "Physical engineering on plate-like parts: steady heat conduction and plane-stress linear elasticity with stated conditions, analytical reference checks, mesh refinement, variant comparison and parametric design search with held-out checks.",
+  "capabilities": [
+    "steady-heat-conduction",
+    "linear-elasticity",
+    "plane-stress",
+    "finite-elements",
+    "heat-sources",
+    "convection",
+    "supports-and-loads",
+    "energy-balance",
+    "force-equilibrium",
+    "analytical-references",
+    "mesh-refinement",
+    "variant-comparison",
+    "design-search",
+    "held-out-load-cases",
+    "trade-off-frontier",
+    "missing-data-questions",
+    "stl-profile-import",
+    "vulcan-geometry",
+    "persistent-studies"
+  ],
+  "placeholders": [
+    "MAXWELL_DIR",
+    "PYTHON",
+    "APP_URL"
+  ],
+  "defaults": {
+    "APP_URL": "http://127.0.0.1:5243",
+    "PYTHON": "{MAXWELL_DIR}/.venv/Scripts/python.exe"
+  },
+  "app": {
+    "url_default": "http://127.0.0.1:5243",
+    "ui_url": "{APP_URL}/",
+    "health": {
+      "path": "/api/health",
+      "expect": {
+        "service": "maxwell-hoard"
+      }
+    }
+  },
+  "mcp": {
+    "transport": "stdio",
+    "command": "{PYTHON}",
+    "args": [
+      "-m",
+      "maxwell.mcp_server"
+    ],
+    "env": {
+      "PYTHONPATH": "{MAXWELL_DIR}",
+      "MAXWELL_DATA": "{MAXWELL_DIR}/data",
+      "VULCAN_URL": "http://127.0.0.1:5186"
+    }
+  },
+  "notes": "Candidate manifest, not registered in Hub. Explicit startup only (python -m maxwell)."
+}

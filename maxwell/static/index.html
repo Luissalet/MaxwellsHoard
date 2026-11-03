@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en" data-hoard-app="maxwell">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maxwell's Hoard</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/hoard-theme.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; }
+  header { display: flex; align-items: baseline; gap: 16px; padding: 18px 24px; border-bottom: 1px solid var(--hoard-border); background: var(--hoard-surface); }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 0; color: var(--hoard-text-muted); font-size: 14px; }
+  main { display: grid; grid-template-columns: minmax(320px, 430px) 1fr; gap: 18px; padding: 18px 24px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px; } }
+  section.hoard-card { padding: 14px 16px; margin-bottom: 16px; }
+  h2 { font-family: var(--hoard-font-serif); font-size: 15px; letter-spacing: .02em; margin: 0 0 10px; color: var(--hoard-accent); }
+  label { display: block; font-size: 12px; color: var(--hoard-text-dim); margin: 10px 0 4px; }
+  select, textarea, input { width: 100%; background: var(--hoard-sunken); color: var(--hoard-text); border: 1px solid var(--hoard-border); border-radius: var(--hoard-radius-sm); padding: 7px 9px; font: 13px var(--hoard-font-sans); }
+  textarea { font: 12px/1.45 var(--hoard-font-mono); min-height: 120px; resize: vertical; }
+  #problem { min-height: 300px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .hoard-btn[disabled] { opacity: .5; cursor: progress; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hoard-border); margin-bottom: 12px; flex-wrap: wrap; }
+  .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--hoard-text-muted); padding: 8px 12px; cursor: pointer; font: 500 13px var(--hoard-font-sans); }
+  .tabs button.on { color: var(--hoard-accent); border-bottom-color: var(--hoard-accent); }
+  .pane { display: none; } .pane.on { display: block; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .stat { background: var(--hoard-elevated); border-radius: var(--hoard-radius); padding: 10px 12px; }
+  .stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--hoard-text-dim); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--hoard-border); vertical-align: top; }
+  th { color: var(--hoard-text-dim); font-weight: 500; font-size: 12px; }
+  .ok { color: var(--hoard-success); font-weight: 600; } .bad { color: var(--hoard-danger); font-weight: 600; } .warn { color: var(--hoard-warning); }
+  .canvas-wrap { position: relative; background: var(--hoard-sunken); border-radius: var(--hoard-radius); padding: 10px; }
+  canvas { width: 100%; display: block; }
+  .legend { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--hoard-text-muted); margin-top: 8px; }
+  .legend i { flex: 1; height: 10px; border-radius: 4px; background: linear-gradient(90deg, #000004, #3b0f70, #8c2981, #de4968, #fe9f6d, #fcfdbf); }
+  ul.notes { margin: 6px 0 0; padding-left: 18px; color: var(--hoard-text-muted); font-size: 13px; }
+  .questions { border: 1px solid var(--hoard-warning); background: rgba(212,168,67,.08); border-radius: var(--hoard-radius); padding: 10px 14px; margin-bottom: 12px; }
+  .muted { color: var(--hoard-text-dim); font-size: 12px; }
+  code { font-family: var(--hoard-font-mono); font-size: 12px; }
+  #status { min-height: 18px; font-size: 13px; color: var(--hoard-text-muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 class="hoard-brand">Maxwell's Hoard</h1>
+  <p>Steady heat conduction and linear elasticity with stated conditions, reference checks and design search</p>
+</header>
+<main>
+  <div>
+    <section class="hoard-card">
+      <h2>Commission</h2>
+      <label for="example">Worked example</label>
+      <select id="example"></select>
+      <label for="problem">Problem (SI units, temperatures in °C)</label>
+      <textarea id="problem" spellcheck="false"></textarea>
+      <div class="row">
+        <button class="hoard-btn" id="btn-check">Check</button>
+        <button class="hoard-btn hoard-btn-primary" id="btn-solve">Solve</button>
+        <button class="hoard-btn" id="btn-refine">Refinement study</button>
+      </div>
+      <div id="status" role="status"></div>
+    </section>
+    <section class="hoard-card">
+      <h2>Geometry from Vulcan</h2>
+      <p class="muted" style="margin:0">A constant-thickness STL becomes the profile; physics, materials and conditions of the problem above are kept.</p>
+      <label for="vulcan-id">Vulcan model id</label>
+      <input id="vulcan-id" placeholder="model id in Vulcan's Hoard">
+      <label for="stl-file">or an STL file</label>
+      <input id="stl-file" type="file" accept=".stl">
+      <label for="import-res">Sampling resolution (mm, empty = automatic)</label>
+      <input id="import-res" type="number" min="0" step="any">
+      <div class="row"><button class="hoard-btn" id="btn-import">Import geometry</button></div>
+      <div id="import-report" class="muted"></div>
+    </section>
+    <section class="hoard-card">
+      <h2>Variants</h2>
+      <label for="variants">List of {name, changes: {dotted.path: value}}</label>
+      <textarea id="variants" spellcheck="false"></textarea>
+      <div class="row"><button class="hoard-btn" id="btn-compare">Compare variants</button></div>
+    </section>
+    <section class="hoard-card">
+      <h2>Design search</h2>
+      <label for="search">Parameters, objective, held-out cases</label>
+      <textarea id="search" spellcheck="false"></textarea>
+      <div class="row"><button class="hoard-btn" id="btn-search">Search designs</button></div>
+    </section>
+  </div>
+  <div>
+    <section class="hoard-card">
+      <div class="tabs" role="tablist">
+        <button class="on" data-pane="result">Result</button>
+        <button data-pane="study">Study</button>
+        <button data-pane="refs">References</button>
+        <button data-pane="records">Records</button>
+      </div>
+      <div class="pane on" id="pane-result">
+        <div id="questions"></div>
+        <div id="result-empty" class="muted">Pick an example and press Solve.</div>
+        <div id="result" hidden>
+          <div class="row" style="margin:0 0 10px">
+            <select id="field-sel" style="width:auto"></select>
+            <label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="deform" style="width:auto"> deformed shape (exaggerated)</label>
+          </div>
+          <div class="canvas-wrap"><canvas id="cv" height="420"></canvas>
+            <div class="legend"><span id="lg-min"></span><i></i><span id="lg-max"></span></div></div>
+          <h2 style="margin-top:16px">Summary</h2>
+          <div class="stats" id="stats"></div>
+          <h2 style="margin-top:16px">Requirements</h2>
+          <div id="reqs"></div>
+          <h2 style="margin-top:16px">Probes</h2>
+          <div id="probes"></div>
+          <h2 style="margin-top:16px">Assumptions</h2>
+          <ul class="notes" id="assumptions"></ul>
+        </div>
+      </div>
+      <div class="pane" id="pane-study"><div class="muted">Run a refinement study, a comparison or a design search.</div></div>
+      <div class="pane" id="pane-refs"><div class="muted">Loading…</div></div>
+      <div class="pane" id="pane-records"><div class="muted">Loading…</div></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let examples = [], current = null;
+
+function fmt(v, unit = '') {
+  if (v === null || v === undefined) return '—';
+  if (typeof v !== 'number') return esc(v);
+  const a = Math.abs(v);
+  let s = a !== 0 && (a < 1e-3 || a >= 1e6) ? v.toExponential(3) : (+v.toPrecision(5)).toString();
+  return s + (unit ? ' ' + unit : '');
+}
+const UNITS = { max_temperature: '°C', min_temperature: '°C', max_displacement: 'm', max_abs_ux: 'm', max_abs_uy: 'm',
+  max_von_mises: 'Pa', max_von_mises_unaveraged: 'Pa', mass: 'kg', safety_factor: '', compliance_J: 'J' };
+const unitOf = (q) => UNITS[q] ?? (q.includes('temperature') ? '°C' : q.includes('displacement') ? 'm' : q.includes('von_mises') ? 'Pa' : '');
+
+function setStatus(t, cls = '') { $('#status').className = cls; $('#status').textContent = t; }
+function busy(on) { document.querySelectorAll('button.hoard-btn').forEach((b) => (b.disabled = on)); }
+function readJSON(id) {
+  try { return JSON.parse($(id).value); } catch (e) { throw new Error(`${id.slice(1)} is not valid JSON: ${e.message}`); }
+}
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const d = j.detail || j; const err = new Error(d.error || (typeof d === 'string' ? d : JSON.stringify(d))); err.questions = d.questions || []; throw err; }
+  return j;
+}
+function tab(name) {
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.pane === name));
+  document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.id === 'pane-' + name));
+}
+document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => { tab(b.dataset.pane); if (b.dataset.pane === 'records') loadRecords(); }));
+
+function showQuestions(err) {
+  const q = err.questions || [];
+  $('#questions').innerHTML = `<div class="questions"><b>${q.length ? 'Missing information' : 'Problem not valid'}:</b> ${esc(err.message)}${q.length ? '<ul class="notes">' + q.map((x) => `<li>${esc(x)}</li>`).join('') + '</ul>' : ''}</div>`;
+  tab('result');
+}
+async function run(label, fn) {
+  busy(true); setStatus(label + '…'); $('#questions').innerHTML = '';
+  const t0 = performance.now();
+  try { await fn(); setStatus(`${label}: done in ${((performance.now() - t0) / 1000).toFixed(1)} s`, ''); }
+  catch (e) { setStatus(`${label}: ${e.message}`, 'bad'); if (e.questions) showQuestions(e); }
+  finally { busy(false); }
+}
+
+async function loadExamples() {
+  examples = await api('/api/examples');
+  $('#example').innerHTML = examples.map((e) => `<option value="${e.id}">${esc(e.title)}</option>`).join('');
+  await pickExample(examples[0].id);
+}
+async function pickExample(id) {
+  const ex = await api('/api/examples/' + id);
+  $('#problem').value = JSON.stringify(ex.problem, null, 2);
+  $('#variants').value = JSON.stringify(ex.variants || [], null, 2);
+  $('#search').value = ex.search ? JSON.stringify(ex.search, null, 2) : JSON.stringify({ parameters: [], objective: { quantity: 'max_temperature', sense: 'min' }, holdout: [] }, null, 2);
+}
+$('#example').addEventListener('change', (e) => pickExample(e.target.value));
+
+// ----------------------------------------------------------------- drawing
+const STOPS = [[0, 0, 4], [59, 15, 112], [140, 41, 129], [222, 73, 104], [254, 159, 109], [252, 253, 191]];
+function rgbOf(t) {
+  t = Math.min(1, Math.max(0, t)) * (STOPS.length - 1);
+  const i = Math.min(STOPS.length - 2, Math.floor(t)), f = t - i, a = STOPS[i], b = STOPS[i + 1];
+  return a.map((v, k) => Math.round(v + (b[k] - v) * f));
+}
+function draw() {
+  if (!current || !current.field) return;
+  const F = current.field, cv = $('#cv'), key = $('#field-sel').value, vals = F.values[key];
+  const dpr = window.devicePixelRatio || 1, Wpx = cv.clientWidth;
+  const pad = 16, scale = (Wpx - 2 * pad) / F.width;
+  const Hpx = Math.min(560, F.height * scale + 2 * pad);
+  const s = Math.min(scale, (Hpx - 2 * pad) / F.height);
+  cv.width = Wpx * dpr; cv.height = Hpx * dpr; cv.style.height = Hpx + 'px';
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, Wpx, Hpx);
+  let k = 0;
+  if ($('#deform').checked && F.ux) {
+    const umax = Math.max(...F.ux.map(Math.abs), ...F.uy.map(Math.abs));
+    k = umax > 0 ? 0.08 * Math.max(F.width, F.height) / umax : 0;
+  }
+  const ox = Math.max(pad, (Wpx - F.width * s) / 2);
+  const X = (i) => ox + (F.x[i] + k * (F.ux ? F.ux[i] : 0)) * s;
+  const Y = (i) => Hpx - pad - (F.y[i] + k * (F.uy ? F.uy[i] : 0)) * s;
+  let lo = Infinity, hi = -Infinity;
+  for (const v of vals) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const span = hi - lo || 1;
+  if (k) { g.strokeStyle = 'rgba(255,255,255,.25)'; g.setLineDash([4, 4]); g.strokeRect(ox, Hpx - pad - F.height * s, F.width * s, F.height * s); g.setLineDash([]); }
+  // Smooth shading: rasterise every sub-triangle and interpolate the nodal values.
+  const img = g.getImageData(0, 0, cv.width, cv.height), D = img.data, Wd = cv.width, Hd = cv.height;
+  const LUT = Array.from({ length: 256 }, (_, i) => rgbOf(i / 255));
+  for (const [a, b, c] of F.triangles) {
+    const ax = X(a) * dpr, ay = Y(a) * dpr, bx = X(b) * dpr, by = Y(b) * dpr, cx = X(c) * dpr, cy = Y(c) * dpr;
+    const det = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
+    if (Math.abs(det) < 1e-9) continue;
+    const va = (vals[a] - lo) / span, vb = (vals[b] - lo) / span, vc = (vals[c] - lo) / span;
+    const x0 = Math.max(0, Math.floor(Math.min(ax, bx, cx))), x1 = Math.min(Wd - 1, Math.ceil(Math.max(ax, bx, cx)));
+    const y0 = Math.max(0, Math.floor(Math.min(ay, by, cy))), y1 = Math.min(Hd - 1, Math.ceil(Math.max(ay, by, cy)));
+    for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+      const qx = px + 0.5, qy = py + 0.5;
+      const l2 = ((qx - ax) * (cy - ay) - (cx - ax) * (qy - ay)) / det, l3 = ((bx - ax) * (qy - ay) - (qx - ax) * (by - ay)) / det, l1 = 1 - l2 - l3;
+      if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
+      const col = LUT[Math.max(0, Math.min(255, Math.round((l1 * va + l2 * vb + l3 * vc) * 255)))], o = (py * Wd + px) * 4;
+      D[o] = col[0]; D[o + 1] = col[1]; D[o + 2] = col[2]; D[o + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  g.lineWidth = 1; g.font = '11px ' + getComputedStyle(document.body).fontFamily;
+  for (const r of F.regions || []) {
+    if (r.void) continue;
+    g.strokeStyle = 'rgba(255,255,255,.55)'; g.setLineDash([3, 3]);
+    g.strokeRect(ox + r.x0 * s, Hpx - pad - r.y1 * s, (r.x1 - r.x0) * s, (r.y1 - r.y0) * s); g.setLineDash([]);
+    g.fillStyle = 'rgba(255,255,255,.8)'; g.fillText(r.id, ox + r.x0 * s + 3, Hpx - pad - r.y1 * s + 12);
+  }
+  const u = unitOf(key === 'temperature' ? 'max_temperature' : key === 'displacement' ? 'max_displacement' : 'max_von_mises');
+  $('#lg-min').textContent = fmt(lo, u); $('#lg-max').textContent = fmt(hi, u);
+}
+$('#field-sel').addEventListener('change', draw);
+$('#deform').addEventListener('change', draw);
+window.addEventListener('resize', draw);
+
+function showResult(res) {
+  current = res; $('#result').hidden = false; $('#result-empty').hidden = true;
+  const keys = Object.keys(res.field?.values || {});
+  $('#field-sel').innerHTML = keys.map((k) => `<option value="${k}">${k.replace('_', ' ')}</option>`).join('');
+  $('#deform').parentElement.hidden = res.physics !== 'elastic';
+  const S = res.summary, cards = [];
+  const add = (label, v, u, cls = '') => cards.push(`<div class="stat"><b class="${cls}">${fmt(v, u)}</b><span>${esc(label)}</span></div>`);
+  if (res.physics === 'thermal') {
+    add('max temperature', S.max_temperature, '°C'); add('min temperature', S.min_temperature, '°C');
+    for (const [r, v] of Object.entries(S.region_avg_temperature || {})) add(`mean in ${r}`, v, '°C');
+    const hb = S.heat_balance;
+    add('heat in (sources + flux)', hb.sources_W + hb.flux_in_W, 'W');
+    add('energy balance residual', hb.relative_residual, '', hb.relative_residual < 1e-6 ? 'ok' : 'bad');
+  } else {
+    add('max displacement', S.max_displacement, 'm'); add('max von Mises (averaged)', S.max_von_mises, 'Pa');
+    add('safety factor vs yield', S.safety_factor, '', S.safety_factor >= 1 ? '' : 'bad'); add('mass', S.mass, 'kg');
+    add('applied force Fy', S.equilibrium.applied_fy, 'N'); add('reaction Fy', S.equilibrium.reaction_fy, 'N');
+    add('equilibrium residual', S.equilibrium.relative_residual, '', S.equilibrium.relative_residual < 1e-6 ? 'ok' : 'bad');
+  }
+  add('mesh', `${res.mesh.elements} T6 · ${res.mesh.unknowns} unknowns`);
+  $('#stats').innerHTML = cards.join('');
+  $('#reqs').innerHTML = res.requirements.length ? reqTable(res.requirements) + `<p>Verdict: <span class="${res.verdict === 'pass' ? 'ok' : 'bad'}">${res.verdict}</span></p>` : '<p class="muted">No requirements stated.</p>';
+  $('#probes').innerHTML = res.probes.length ? `<table><tr><th>probe</th><th>x, y</th><th>values</th></tr>${res.probes.map((p) => `<tr><td>${esc(p.id)}</td><td>${fmt(p.x)}, ${fmt(p.y)}</td><td>${p.error ? esc(p.error) : Object.entries(p).filter(([k]) => !['id', 'x', 'y'].includes(k)).map(([k, v]) => `${k} ${fmt(v)}`).join(' · ')}</td></tr>`).join('')}</table>` : '<p class="muted">No probes.</p>';
+  $('#assumptions').innerHTML = res.assumptions.map((a) => `<li>${esc(a)}</li>`).join('') + (res.record_id ? `<li>Saved as record <code>${esc(res.record_id)}</code></li>` : '');
+  tab('result'); requestAnimationFrame(draw);
+}
+const reqTable = (reqs) => `<table><tr><th>quantity</th><th>limit</th><th>value</th><th></th></tr>${reqs.map((r) => `<tr><td>${esc(r.quantity)}</td><td>${r.max !== undefined ? '≤ ' + fmt(r.max) : ''}${r.min !== undefined ? '≥ ' + fmt(r.min) : ''}</td><td>${fmt(r.value, unitOf(r.quantity))}</td><td class="${r.ok ? 'ok' : 'bad'}">${r.ok ? 'meets' : 'fails'}</td></tr>`).join('')}</table>`;
+
+$('#btn-check').addEventListener('click', () => run('Check', async () => {
+  const r = await api('/api/check', { problem: readJSON('#problem') });
+  if (r.status === 'valid') setStatus('Problem is complete and valid.');
+  else { const e = new Error(r.error); e.questions = r.questions; throw e; }
+}));
+$('#btn-solve').addEventListener('click', () => run('Solve', async () => showResult(await api('/api/solve', { problem: readJSON('#problem') }))));
+$('#btn-refine').addEventListener('click', () => run('Refinement study', async () => {
+  const r = await api('/api/refinement', { problem: readJSON('#problem'), levels: [1, 2, 4] });
+  const qs = Object.entries(r.quantities);
+  $('#pane-study').innerHTML = `<h2>Mesh refinement</h2><table><tr><th>level</th><th>element size</th><th>unknowns</th>${qs.map(([q]) => `<th>${esc(q)}</th>`).join('')}</tr>
+    ${r.levels.map((l) => `<tr><td>×${l.refine}</td><td>${fmt(l.size, 'm')}</td><td>${l.unknowns}</td>${qs.map(([q]) => `<td>${fmt(l.values[q], unitOf(q))}</td>`).join('')}</tr>`).join('')}</table>
+    <table style="margin-top:12px"><tr><th>quantity</th><th>status</th><th>observed order</th><th>extrapolated</th><th>estimated error</th></tr>
+    ${qs.map(([q, v]) => `<tr><td>${esc(q)}</td><td class="${(v.status || '').startsWith('not') ? 'bad' : 'ok'}">${esc(v.status || '—')}</td><td>${fmt(v.observed_order)}</td><td>${fmt(v.extrapolated, unitOf(q))}</td><td>${fmt(v.estimated_error_last)}</td></tr>`).join('')}</table>
+    <p class="muted">Record <code>${esc(r.record_id)}</code>. A peak that keeps growing is a singular point (sharp corner, clamped edge end), not a material failure prediction.</p>`;
+  tab('study');
+}));
+$('#btn-compare').addEventListener('click', () => run('Comparison', async () => {
+  const r = await api('/api/compare', { problem: readJSON('#problem'), variants: readJSON('#variants') });
+  const qs = [...new Set(r.variants.flatMap((v) => (v.requirements || []).map((x) => x.quantity)))];
+  $('#pane-study').innerHTML = `<h2>Variants</h2><table><tr><th>variant</th>${qs.map((q) => `<th>${esc(q)}</th>`).join('')}<th>verdict</th></tr>
+    ${r.variants.map((v) => `<tr><td>${esc(v.name)}</td>${qs.map((q) => { const x = (v.requirements || []).find((y) => y.quantity === q); return `<td class="${x ? (x.ok ? '' : 'bad') : ''}">${x ? fmt(x.value, unitOf(q)) : '—'}</td>`; }).join('')}<td class="${v.verdict === 'pass' ? 'ok' : 'bad'}">${esc(v.verdict)}${v.error ? ': ' + esc(v.error) : ''}</td></tr>`).join('')}</table>
+    <p>Meet every requirement: <b>${r.passing.length ? r.passing.map(esc).join(', ') : 'none'}</b></p><p class="muted">Record <code>${esc(r.record_id)}</code></p>`;
+  tab('study');
+}));
+$('#btn-search').addEventListener('click', () => run('Design search', async () => {
+  const s = readJSON('#search');
+  const r = await api('/api/search', { problem: readJSON('#problem'), ...s });
+  const oq = r.objective.quantity, tq = r.tradeoff_quantity;
+  const front = new Set(r.frontier_ids);
+  const fin = r.finalists.map((f) => `<tr><td>${esc(JSON.stringify(f.changes))}</td><td>${fmt(f.search_objective, unitOf(oq))}</td><td>${fmt(f.fine_objective, unitOf(oq))}</td><td class="${f.fine_verdict === 'pass' ? 'ok' : 'bad'}">${f.fine_verdict}</td><td>${f.holdout.map((h) => `<span class="${h.verdict === 'pass' ? 'ok' : 'bad'}">${esc(h.name)}: ${h.verdict}</span>`).join('<br>') || '—'}</td><td class="${f.accepted ? 'ok' : 'bad'}">${f.accepted ? 'accepted' : 'rejected'}</td></tr>`).join('');
+  const rows = r.candidates.filter((c) => front.has(c.id)).sort((a, b) => a.objective - b.objective)
+    .map((c) => `<tr><td>${esc(JSON.stringify(c.changes))}</td><td>${fmt(c.objective, unitOf(oq))}</td><td>${fmt(c.second, unitOf(tq || ''))}</td></tr>`).join('');
+  $('#pane-study').innerHTML = `<h2>Design search</h2><p>${r.evaluated} candidates evaluated, ${r.feasible} meet the requirements on the search mesh.</p>
+    <p>Recommended: <b class="${r.recommended ? 'ok' : 'bad'}">${r.recommended ? esc(JSON.stringify(r.recommended.changes)) : 'no candidate survived the checks'}</b></p>
+    <h2 style="margin-top:14px">Finalists re-checked</h2><table><tr><th>parameters</th><th>${esc(oq)} (search)</th><th>${esc(oq)} (fine mesh)</th><th>fine mesh</th><th>held-out cases</th><th></th></tr>${fin}</table>
+    <h2 style="margin-top:14px">Trade-off frontier (${esc(oq)} vs ${esc(tq || '—')})</h2><table><tr><th>parameters</th><th>${esc(oq)}</th><th>${esc(tq || '')}</th></tr>${rows}</table>
+    <p class="muted">${esc(r.note)} Record <code>${esc(r.record_id)}</code></p>`;
+  tab('study');
+}));
+
+$('#btn-import').addEventListener('click', () => run('Import', async () => {
+  const body = { problem: readJSON('#problem') };
+  const res = parseFloat($('#import-res').value);
+  if (res > 0) body.resolution_mm = res;
+  const file = $('#stl-file').files[0], id = $('#vulcan-id').value.trim();
+  if (file) {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+    body.stl_base64 = btoa(bin); body.name = file.name.replace(/\.stl$/i, '');
+  } else if (id) body.model_id = id;
+  else throw new Error('give a Vulcan model id or choose an STL file');
+  const r = await api('/api/import', body), rep = r.report;
+  $('#problem').value = JSON.stringify(r.problem, null, 2);
+  $('#import-report').innerHTML = `Imported ${rep.triangles} triangles, thin axis ${rep.thin_axis}, thickness ${fmt(rep.bbox[['x','y','z'].indexOf(rep.thin_axis)], 'm')}, ${rep.void_rectangles} void rectangles at ${fmt(rep.resolution[0] * 1000)} mm. Volume vs mesh: <span class="${rep.volume_difference < 0.02 ? 'ok' : 'warn'}">${(rep.volume_difference * 100).toFixed(2)} %</span>.<ul class="notes">${rep.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>`;
+}));
+
+async function loadRefs() {
+  const refs = await api('/api/references');
+  $('#pane-refs').innerHTML = `<p class="muted">Problems with a closed-form answer. The solver is trusted only as far as these pass.</p>` +
+    refs.map((r) => `<div style="margin:10px 0"><b>${esc(r.name)}</b> <button class="hoard-btn" data-ref="${r.id}">Verify</button><div id="ref-${r.id}"></div></div>`).join('');
+  document.querySelectorAll('[data-ref]').forEach((b) => b.addEventListener('click', () => run('Reference ' + b.dataset.ref, async () => {
+    const v = await api('/api/references/' + b.dataset.ref, {});
+    $('#ref-' + b.dataset.ref).innerHTML = `<table><tr><th>quantity</th><th>reference</th><th>Maxwell</th><th>error</th><th>source</th></tr>${v.checks.map((c) => `<tr><td>${esc(c.quantity)}</td><td>${fmt(c.reference)}</td><td>${fmt(c.value)}</td><td class="${c.ok ? 'ok' : 'bad'}">${(c.relative_error * 100).toFixed(4)} %</td><td class="muted">${esc(c.source)}</td></tr>`).join('')}</table>` +
+      (v.changed_condition ? `<p class="muted">Changed condition ${esc(JSON.stringify(v.changed_condition.changes))}: ${fmt(v.changed_condition.before)} → ${fmt(v.changed_condition.after)} (expected ${fmt(v.changed_condition.expected)}) <span class="${v.changed_condition.ok ? 'ok' : 'bad'}">${v.changed_condition.ok ? 'responds as expected' : 'unexpected'}</span></p>` : '') +
+      `<p class="${v.ok ? 'ok' : 'bad'}">${v.ok ? 'Reference passes' : 'Reference fails'}</p>`;
+  })));
+}
+async function loadRecords() {
+  const recs = await api('/api/records?limit=60');
+  $('#pane-records').innerHTML = recs.length ? `<table><tr><th>when</th><th>kind</th><th>name</th><th>id</th></tr>${recs.map((r) => `<tr><td>${esc(r.created)}</td><td>${esc(r.kind)}</td><td>${esc(r.name)}</td><td><a href="/api/records/${encodeURIComponent(r.id)}" target="_blank" style="color:var(--hoard-accent)"><code>${esc(r.id)}</code></a></td></tr>`).join('')}</table>` : '<p class="muted">No saved studies yet.</p>';
+}
+loadExamples().catch((e) => setStatus(e.message, 'bad'));
+loadRefs().catch((e) => ($('#pane-refs').textContent = e.message));
+</script>
+</body>
+</html>
