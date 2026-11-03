@@ -57,6 +57,12 @@ def _num(value, name, positive=False, allow_zero=True):
     return value
 
 
+def _sides(v, name):
+    if v not in (1, 2, 1.0, 2.0) or isinstance(v, bool):
+        raise ProblemError(f"{name} must be 1 or 2")
+    return int(v)
+
+
 def resolve_material(problem: dict, key: str) -> dict:
     custom = problem.get("materials") or {}
     if key in custom:
@@ -124,7 +130,7 @@ def validate(problem: dict) -> dict:
                 reg["face_convection"] = {
                     "h": _num(fc.get("h"), f"regions.{rid}.face_convection.h", positive=True),
                     "t_inf": _num(fc.get("t_inf"), f"regions.{rid}.face_convection.t_inf"),
-                    "sides": int(fc.get("sides", 2)),
+                    "sides": _sides(fc.get("sides", 2), f"regions.{rid}.face_convection.sides"),
                 }
         regions.append(reg)
     if len({r["id"] for r in regions}) != len(regions):
@@ -136,11 +142,17 @@ def validate(problem: dict) -> dict:
         if missing:
             raise ProblemError(f"material {key} lacks {', '.join(missing)}",
                                [f"What is the {n} of {key}?" for n in missing])
+        for prop, lo, hi in (("E", 0, None), ("k", 0, None), ("density", -1e-300, None)):
+            v = mat.get(prop)
+            if v is not None and (_num(v, f"{key}.{prop}") <= lo):
+                raise ProblemError(f"material {key}: {prop} must be > 0")
+        if mat.get("nu") is not None and not (-1 < _num(mat["nu"], f"{key}.nu") < 0.5):
+            raise ProblemError(f"material {key}: Poisson's ratio must be between -1 and 0.5")
     if physics == "thermal" and p.get("face_convection"):
         fc = p["face_convection"]
         p["face_convection"] = {"h": _num(fc.get("h"), "face_convection.h", positive=True),
                                 "t_inf": _num(fc.get("t_inf"), "face_convection.t_inf"),
-                                "sides": int(fc.get("sides", 2))}
+                                "sides": _sides(fc.get("sides", 2), "face_convection.sides")}
     bcs = []
     allowed = THERMAL_BC if physics == "thermal" else ELASTIC_BC
     for i, b in enumerate(p.get("boundary") or []):

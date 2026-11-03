@@ -166,12 +166,23 @@ class Mesh:
         return int(idx[0]), nat[idx[0]]
 
 
-def _components(mesh):
+def _pieces(mesh):
+    """Pieces of the body: elements joined through a shared edge (a shared
+    mid-side node). Pieces that touch only at a corner are separate, because
+    a single node cannot carry a moment or a meaningful heat flow."""
     ne = len(mesh.elems)
-    rows = np.repeat(np.arange(ne), 6)
-    inc = sp.csr_matrix((np.ones(ne * 6), (rows, mesh.elems.ravel())), shape=(ne, len(mesh.nodes)))
-    adj = inc.T @ inc
-    return connected_components(adj, directed=False)
+    rows = np.repeat(np.arange(ne), 3)
+    inc = sp.csr_matrix((np.ones(ne * 3), (rows, mesh.elems[:, 3:].ravel())), shape=(ne, len(mesh.nodes)))
+    n, labels = connected_components(inc @ inc.T, directed=False)
+    return n, labels
+
+
+def _pieces_touching(mesh, labels, nodes):
+    """Pieces that own at least one of the given nodes."""
+    if len(nodes) == 0:
+        return set()
+    hit = np.isin(mesh.elems, np.asarray(nodes)).any(1)
+    return set(labels[hit].tolist())
 
 
 def _material_arrays(p, mesh, key):
@@ -267,7 +278,10 @@ def solve_thermal(p, mesh):
     fixed, vals = [], []
     edge_conv = []
     for b in p["boundary"]:
-        for ids, L in mesh.boundary_edges(b["edge"], b["from"], b["to"]):
+        edges = mesh.boundary_edges(b["edge"], b["from"], b["to"])
+        if b["type"] != "insulated" and not edges:
+            raise ProblemError(f"condition '{b['label']}' falls on a void part of the {b['edge']} edge")
+        for ids, L in edges:
             ids = np.array(ids)
             if b["type"] == "temperature":
                 fixed += list(ids)
@@ -283,10 +297,11 @@ def solve_thermal(p, mesh):
     if len(fixed):
         fixed, first = np.unique(fixed, return_index=True)
         vals = vals[first]
-    ncomp, labels = _components(mesh)
-    cooled = set(labels[fixed]) if len(fixed) else set()
-    cooled |= {labels[ids[0]] for ids, _, _ in edge_conv}
-    cooled |= set(labels[mesh.elems[face_h > 0, 0]])
+    ncomp, labels = _pieces(mesh)
+    cooled = _pieces_touching(mesh, labels, fixed)
+    for ids, _, _ in edge_conv:
+        cooled |= _pieces_touching(mesh, labels, ids)
+    cooled |= set(labels[face_h > 0].tolist())
     if len(cooled) < ncomp:
         raise ProblemError("part of the body has no fixed temperature and no convection: its temperature is undetermined",
                            ["Where does the heat leave the part? Give a fixed temperature, an edge convection or a face convection for every separate piece."])
@@ -305,6 +320,9 @@ def solve_thermal(p, mesh):
         q_fixed = float(-r.sum())  # K T - f is the heat injected at fixed nodes; its negative leaves there
     inflow = q_src + q_flux
     outflow = q_edge_conv + q_face + q_fixed
+    throughput = abs(q_src) + abs(q_flux) + abs(q_edge_conv) + abs(q_face) + abs(q_fixed)
+    if throughput > 0 and abs(inflow - outflow) / throughput > 1e-6:
+        raise ProblemError("the solution does not balance the heat flows: the model is ill-conditioned")
     region_avg = {}
     for rid, m in elem_region.items():
         if m.any() and not next(r for r in p["regions"] if r["id"] == rid)["void"]:
@@ -316,7 +334,7 @@ def solve_thermal(p, mesh):
         "region_avg_temperature": region_avg,
         "heat_balance": {"sources_W": q_src, "flux_in_W": q_flux, "edge_convection_out_W": q_edge_conv,
                          "face_convection_out_W": q_face, "fixed_temperature_out_W": q_fixed,
-                         "relative_residual": abs(inflow - outflow) / max(abs(inflow), abs(outflow), 1e-30)},
+                         "relative_residual": abs(inflow - outflow) / max(throughput, 1e-30)},
     }
     return {"T": T, "summary": summary}
 
@@ -380,9 +398,9 @@ def solve_elastic(p, mesh):
     fixed = np.unique(np.array(fixed, int))
     applied = np.array([f[0::2].sum(), f[1::2].sum()])
     # Every connected piece must be held against translation and rotation.
-    ncomp, labels = _components(mesh)
+    ncomp, labels = _pieces(mesh)
     for c in range(ncomp):
-        nodes_c = np.flatnonzero(labels == c)
+        nodes_c = np.unique(mesh.elems[labels == c])
         X = mesh.nodes[nodes_c]
         xc = X.mean(0)
         R = np.zeros((n, 3))
@@ -398,6 +416,10 @@ def solve_elastic(p, mesh):
     reactions = K.tocsr()[fixed] @ u - f[fixed]
     rx = reactions[fixed % 2 == 0].sum()
     ry = reactions[fixed % 2 == 1].sum()
+    residual = float(np.hypot(applied[0] + rx, applied[1] + ry) / max(np.hypot(*applied), 1e-30))
+    if np.hypot(*applied) > 0 and residual > 1e-6:
+        raise ProblemError(f"the solution does not balance the loads (residual {residual:.2e}): the model is ill-conditioned",
+                           ["Check that every piece is held by a real edge, not by a single point."])
     # Stresses at the six nodes of each element (linear inside a T6).
     ue = u[edofs]
     vm_nodes = np.zeros((len(mesh.elems), 6))
@@ -431,7 +453,7 @@ def solve_elastic(p, mesh):
         "mass": mass, "safety_factor": sf,
         "equilibrium": {"applied_fx": float(applied[0]), "applied_fy": float(applied[1]),
                         "reaction_fx": float(rx), "reaction_fy": float(ry),
-                        "relative_residual": float(np.hypot(applied[0] + rx, applied[1] + ry) / max(np.hypot(*applied), 1e-30))},
+                        "relative_residual": residual},
         "compliance_J": float(f @ u),
     }
     return {"u": u, "vm": vm_avg, "vm_nodes": vm_nodes, "sig_nodes": sig_nodes, "summary": summary}
@@ -501,6 +523,8 @@ def assumptions(p, mesh):
 
 def run(problem: dict, refine: float = 1.0, field: bool = True) -> dict:
     t0 = time.perf_counter()
+    if not 0 < float(refine) <= 8:
+        raise ProblemError("refine must be between 0 and 8")
     p = validate(problem)
     mesh = Mesh(p, refine)
     dpn = 1 if p["physics"] == "thermal" else 2

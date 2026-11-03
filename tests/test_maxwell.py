@@ -314,3 +314,75 @@ def test_import_from_vulcan_with_library_off_asks_to_switch_it_on(monkeypatch):
         assert "Biblioteca 3D" in err.value.questions[0]
     finally:
         srv.shutdown()
+
+
+# ---- regressions from the independent review
+
+def _corner_pieces():
+    return {"physics": "elastic", "domain": {"width": 2.0, "height": 2.0}, "thickness": 0.01, "material": "steel_s235",
+            "mesh": {"size": 0.25},
+            "regions": [{"id": "a", "x0": 1, "y0": 0, "x1": 2, "y1": 1, "void": True},
+                        {"id": "b", "x0": 0, "y0": 1, "x1": 1, "y1": 2, "void": True}],
+            "boundary": [{"edge": "left", "from": 0, "to": 1, "type": "fixed"},
+                         {"edge": "right", "from": 1, "to": 2, "type": "force", "fy": -1000.0}]}
+
+
+def test_piece_hanging_from_a_single_node_is_not_held():
+    with pytest.raises(ProblemError) as err:
+        run(_corner_pieces(), field=False)
+    assert "rigid body" in str(err.value)
+
+
+def test_thermal_condition_on_a_void_edge_is_refused():
+    p = copy.deepcopy(examples.BOARD)
+    p["regions"].append({"id": "notch", "x0": 0.0, "y0": 0.05, "x1": 0.01, "y1": 0.1, "void": True})
+    p["boundary"] = [{"edge": "left", "from": 0.05, "to": 0.1, "type": "flux", "q": 5000.0}]
+    with pytest.raises(ProblemError):
+        run(p, field=False)
+
+
+def test_import_snapping_never_collapses_a_slot():
+    from maxwell.geometry_import import profile_from_stl
+    tris = np.concatenate([_box(0, 0, 0, 5, 20, 2), _box(7, 0, 0, 20, 20, 2), _box(5, 0, 0, 7, 5, 2), _box(5, 15, 0, 7, 20, 2)])
+    data = b"\0" * 80 + np.uint32(len(tris)).tobytes() + b"".join(np.zeros(3, "<f4").tobytes() + t.astype("<f4").tobytes() + b"\0\0" for t in tris)
+    out = profile_from_stl(data, resolution_mm=2)
+    for r in out["profile"]["regions"]:
+        assert r["x1"] > r["x0"] and r["y1"] > r["y0"]
+    assert out["report"]["volume_difference"] < 1e-9  # slot 5..7 mm kept exactly
+    validate({**out["profile"], "physics": "thermal", "material": "copper"})
+
+
+def test_search_survives_a_finalist_that_cannot_be_refined():
+    p = {"physics": "thermal", "domain": {"width": 1.0, "height": 1.0}, "thickness": 0.01, "material": "copper",
+         "mesh": {"size": 1 / 200}, "boundary": [{"edge": "left", "type": "temperature", "value": 20.0}],
+         "regions": [{"id": "src", "x0": 0.4, "y0": 0.4, "x1": 0.6, "y1": 0.6, "power": 10.0}],
+         "requirements": [{"quantity": "max_temperature", "max": 1000.0}]}
+    out = design_search(p, [{"path": "regions.src.power", "values": [5.0, 10.0]}], {"quantity": "max_temperature"})
+    assert out["evaluated"] == 2 and out["finalists"][0]["fine_verdict"] == "invalid" and out["recommended"] is None
+
+
+def test_refinement_of_undefined_quantity_is_a_clean_error():
+    p = apply_changes(reference_cases()["cantilever"]["problem"], {"material": "fr4_board"})
+    with pytest.raises(ProblemError):
+        refinement(p, ["safety_factor"], (1, 2))
+    with pytest.raises(ProblemError):
+        refinement(p, None, (0, 1))
+
+
+def test_frontier_respects_higher_is_better():
+    from maxwell.studies import _frontier
+    rows = [{"id": 0, "objective": 1.0, "second": 5.0}, {"id": 1, "objective": 2.0, "second": 1.0}]
+    assert _frontier(rows, "mass", "min", "safety_factor", "max") == [0]
+    assert _frontier(rows, "mass", "min", "max_displacement", "min") == [0, 1]
+
+
+def test_bad_material_values_are_rejected():
+    p = copy.deepcopy(examples.BRACKET)
+    p["materials"] = {"odd": {"E": 1e9, "nu": 0.6, "density": 1000}}
+    p["material"] = "odd"
+    with pytest.raises(ProblemError):
+        validate(p)
+    q = copy.deepcopy(examples.BOARD)
+    q["face_convection"]["sides"] = 3
+    with pytest.raises(ProblemError):
+        validate(q)

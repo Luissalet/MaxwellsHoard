@@ -120,6 +120,8 @@ def verify_reference(case: str, refine: float = 1.0) -> dict:
 def refinement(problem: dict, quantities: list[str] | None = None, levels=(1, 2, 4), reference: dict | None = None) -> dict:
     if len(levels) < 2 or len(levels) > 4:
         raise ProblemError("give between 2 and 4 refinement levels")
+    if any(not (0 < float(lv) <= 8) for lv in levels) or list(levels) != sorted(levels):
+        raise ProblemError("refinement levels must be increasing and between 0 and 8")
     p = validate(problem)
     if not quantities:
         quantities = ["max_temperature"] if p["physics"] == "thermal" else ["max_displacement", "max_von_mises"]
@@ -131,6 +133,8 @@ def refinement(problem: dict, quantities: list[str] | None = None, levels=(1, 2,
     report = {}
     for q in quantities:
         vals = [r["values"][q] for r in rows]
+        if any(v is None for v in vals):
+            raise ProblemError(f"quantity '{q}' is not defined for this problem (missing property, or a probe outside the material)")
         item = {"values": vals, "relative_change_last": abs(vals[-1] - vals[-2]) / max(abs(vals[-1]), 1e-300)}
         if len(vals) >= 3 and levels[-1] / levels[-2] == levels[-2] / levels[-3]:
             r = levels[-1] / levels[-2]
@@ -191,15 +195,17 @@ def _values(param):
     return vals
 
 
-def _frontier(rows, objective, sense, second):
+def _frontier(rows, objective, sense, second, second_sense="min"):
     pts = [r for r in rows if r.get("objective") is not None and r.get("second") is not None]
+    sg = 1.0 if second_sense == "min" else -1.0
     front = []
     for r in pts:
         dominated = False
         for o in pts:
             better_obj = o["objective"] <= r["objective"] if sense == "min" else o["objective"] >= r["objective"]
-            strictly = (o["objective"] != r["objective"]) or (o["second"] < r["second"])
-            if o is not r and better_obj and o["second"] <= r["second"] and strictly:
+            better_sec = sg * o["second"] <= sg * r["second"]
+            strictly = (o["objective"] != r["objective"]) or (o["second"] != r["second"])
+            if o is not r and better_obj and better_sec and strictly:
                 dominated = True
                 break
         if not dominated:
@@ -245,7 +251,12 @@ def design_search(problem: dict, parameters: list[dict], objective: dict, holdou
     for r in feasible[:max_checks]:
         if len(checked) >= max(1, int(finalists)) and any(c["accepted"] for c in checked):
             break
-        fine = run(apply_changes(problem, r["changes"]), refine=check_refine, field=False)
+        try:
+            fine = run(apply_changes(problem, r["changes"]), refine=check_refine, field=False)
+        except ProblemError as e:
+            checked.append({"id": r["id"], "changes": r["changes"], "search_objective": r["objective"],
+                            "fine_objective": None, "fine_verdict": "invalid", "error": str(e), "holdout": [], "accepted": False})
+            continue
         entry = {"id": r["id"], "changes": r["changes"], "search_objective": r["objective"],
                  "fine_objective": quantity(fine, obj_q), "fine_verdict": fine["verdict"],
                  "fine_requirements": fine["requirements"], "holdout": []}
@@ -257,15 +268,17 @@ def design_search(problem: dict, parameters: list[dict], objective: dict, holdou
                 entry["holdout"].append({"name": h.get("name") or "holdout", "verdict": "invalid", "error": str(e)})
         entry["accepted"] = fine["verdict"] == "pass" and all(x["verdict"] == "pass" for x in entry["holdout"])
         checked.append(entry)
-    front = _frontier(feasible, obj_q, sense, tradeoff) if tradeoff else []
+    # A requirement with a lower bound (safety factor) means higher is better.
+    second_sense = "max" if any(r["quantity"] == tradeoff and "min" in r and "max" not in r for r in p0["requirements"]) else "min"
+    front = _frontier(feasible, obj_q, sense, tradeoff, second_sense) if tradeoff else []
     best = next((c for c in checked if c["accepted"]), None)
     return {
-        "objective": {"quantity": obj_q, "sense": sense}, "tradeoff_quantity": tradeoff,
+        "objective": {"quantity": obj_q, "sense": sense}, "tradeoff_quantity": tradeoff, "tradeoff_sense": second_sense,
         "evaluated": len(rows), "feasible": len(feasible), "candidates": rows,
         "frontier_ids": front, "finalists": checked,
         "recommended": best,
         "note": ("Search used a coarse mesh; finalists were re-solved on a finer mesh and on held-out load cases that "
                  "did not take part in the search; when the cheapest ones fail, further candidates are checked (at most "
                  f"{max(int(finalists), 1) + 7}). The frontier lists feasible trade-offs between the objective and "
-                 f"{tradeoff} (lower is better), not a single perfect design."),
+                 f"{tradeoff} ({'higher' if second_sense == 'max' else 'lower'} is better), not a single perfect design."),
     }

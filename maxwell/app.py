@@ -4,7 +4,7 @@ from __future__ import annotations
 import pathlib
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -136,7 +136,7 @@ def references():
 
 
 @app.post("/api/references/{case}")
-def verify(case: str, refine: float = 1.0):
+def verify(case: str, refine: float = Query(1.0, gt=0, le=8)):
     return _ok(service.verify(case, refine))
 
 

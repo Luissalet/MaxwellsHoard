@@ -36,7 +36,12 @@ def parse_stl(data: bytes) -> np.ndarray:
     text = data.decode("ascii", errors="replace")
     if "vertex" not in text:
         raise ProblemError("not an STL file (binary size mismatch and no ASCII vertices)")
-    verts = [list(map(float, line.split()[1:4])) for line in text.splitlines() if line.strip().startswith("vertex")]
+    try:
+        verts = [list(map(float, line.split()[1:4])) for line in text.splitlines() if line.strip().startswith("vertex")]
+    except ValueError:
+        raise ProblemError("ASCII STL with an unreadable vertex")
+    if any(len(v) != 3 for v in verts):
+        raise ProblemError("ASCII STL with an incomplete vertex")
     if len(verts) % 3 or not verts:
         raise ProblemError("ASCII STL with an incomplete triangle")
     if len(verts) // 3 > MAX_TRIANGLES:
@@ -143,12 +148,15 @@ def profile_from_stl(data: bytes, resolution_mm: float | None = None, thin_axis:
         out = edges.copy()
         for k in range(1, len(edges) - 1):
             near = coords[np.abs(coords - edges[k]) <= step / 2 + 1e-12]
+            # Keep the edges strictly increasing: a vertex at a sample centre
+            # must not collapse two neighbouring edges into one.
+            near = near[(near > out[k - 1] + 1e-9) & (near < edges[k + 1] - 1e-9)]
             if len(near):
                 out[k] = near[np.argmin(np.abs(near - edges[k]))]
         return out
 
     u_edges, v_edges = snap(u_edges, cu, du), snap(v_edges, cv, dv)
-    rects = _rectangles(~mid, u_edges * scale, v_edges * scale)
+    rects = [r for r in _rectangles(~mid, u_edges * scale, v_edges * scale) if r[2] > r[0] and r[3] > r[1]]
     area = float(sum((r[2] - r[0]) * (r[3] - r[1]) for r in rects)) / scale ** 2
     area = ext[plane[0]] * ext[plane[1]] - area
     regions = [{"id": f"void{i + 1}", "x0": round(float(r[0]), 9), "y0": round(float(r[1]), 9),
