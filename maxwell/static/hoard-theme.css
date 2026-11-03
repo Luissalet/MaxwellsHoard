@@ -826,6 +826,26 @@ html[data-hoard-app="scheherazade"] {
   --hoard-accent-line: rgba(108, 130, 236, 0.38);
 }
 
+html[data-hoard-app="shannon"] {
+  --hoard-deep: #141c1c;
+  --hoard-sunken: #101616;
+  --hoard-surface: #1b2425;
+  --hoard-elevated: #242f30;
+  --hoard-hover: #2b3739;
+  --hoard-border: #354243;
+  --hoard-border-hover: #57696b;
+  --hoard-text: #e1ebec;
+  --hoard-text-muted: #b4bdbe;
+  --hoard-text-dim: #9ba5a6;
+  --hoard-accent: #5ee0f0;
+  --hoard-accent-strong: #83e7f3;
+  --hoard-accent-dim: #3ac6d7;
+  --hoard-accent-ink: #131a1b;
+  --hoard-accent-rgb: 94, 224, 240;
+  --hoard-accent-soft: rgba(94, 224, 240, 0.14);
+  --hoard-accent-line: rgba(94, 224, 240, 0.38);
+}
+
 html[data-hoard-app="silver"] {
   --hoard-deep: #1c1415;
   --hoard-sunken: #161011;
