@@ -30,3 +30,7 @@ Integración de familia1987: panel canónico mediante `/api/copilot`, borrador a
 maxwell_examples, maxwell_materials, maxwell_check, maxwell_solve, maxwell_refinement, maxwell_compare, maxwell_design_search, maxwell_verify_reference, maxwell_import_geometry, maxwell_records.
 
 Conector nativo permanenteffea74c7-74d3-40ba-8540-9c620e52ed36, servidorMCPe14f84b3, 10herramientas conectado desdeMain. La aplicación HTTP conserva su parada manual; stdio funciona sin arrancarla. Datos QA aislados y ninguna inferencia solicitada para comprobar estos helpers.
+
+## Skills for the agents that connect
+
+This app carries procedures from the skill library of the family's workspace for the agents that connect to it: `plate-thermal-stress-check`, `measured-improvement`, `verification-loop`. They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. The person chooses them on the skills page (`/api/agent/skills/page`) or in the hub's Skills tab; the `skills` block of `faustus-plugin.json` holds what the app asks for by default.

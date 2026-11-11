@@ -32,3 +32,7 @@ API HTTP y herramientas MCP: ver README.md.
 ## Límites
 
 Bidimensional (tensión plana; conducción en el plano con convección en caras opcional). Sin sólidos 3D, fluidos, radiación (salvo dentro de un coeficiente de convección), contacto, pandeo, plasticidad, fatiga, transitorios ni propiedades dependientes de la temperatura. Geometría rectangular exacta o aproximación escalonada de un perfil importado. Materiales con valores nominales. Solo Python (NumPy/SciPy, licencias BSD), sin binarios externos de mallado ni de cálculo.
+
+## Skills para los agentes que se conectan
+
+Esta app lleva procedimientos de la biblioteca de skills del espacio de trabajo de la familia para los agentes que se conectan: `plate-thermal-stress-check`, `measured-improvement`, `verification-loop`. Aparecen en lo que el agente lee al conectarse, se leen con `skills_list` y `skill_read`, se buscan y asignan con `skills_library` y `skills_assign`, y se ofrecen como prompts. Se eligen en la página de skills (`/api/agent/skills/page`) o en la pestaña Skills del hub; el bloque `skills` de `faustus-plugin.json` guarda lo que la app pide por defecto.
