@@ -1,12 +1,12 @@
 # Maxwell's Hoard
 
-MCP declares examples, materials and coarse problem checking as pure reads (`readOnlyHint=true`), available to Faustus in Plan mode. These helpers create no study data. Solving and saved studies retain their existing persistence; their effects are not relabelled as reads. The combined suite passes66tests, including the real MCP wire contract.
+Local physical engineering for plate-like parts: steady heat conduction and plane-stress elasticity with finite elements. [Español](README.es.md)
 
-Status: integrated in main and listed in the Hub (explicit start). History: ecosystem1935, corrections1982/1985, family integration1987, icon1995, MCP helpers1999 in the maxwell Ágora space. Native Faustus project1548272a539c is linked to that space.
+![Maxwell's Hoard](app-icon.png)
 
-Family integration1987 adds the canonical Faustus panel and an explicit, port-adaptable Hub launch hint. The panel receives the current problem, variants and search draft, including incomplete JSON, plus the last operation with its exact input and compact result. Editing a draft does not relabel an older result as its calculation. The conversation, model and tools remain in Faustus; Maxwell adds no conversation loop. MCP discovery still starts no HTTP application. The permanent native Faustus connector exposes10tools from Main. The HTTP application remains under explicit startup from the Hub.
+## What it is
 
-Physical engineering for plate-like parts, on your own PC: **steady heat conduction** and **plane-stress linear elasticity** solved with quadratic finite elements, with every condition stated, every result checked against a balance, and a solver that is trusted only as far as its analytical references pass.
+Maxwell's Hoard solves physical engineering problems for plate-like parts on your own PC: **steady heat conduction** and **plane-stress linear elasticity** solved with quadratic finite elements, with every condition stated, every result checked against a balance, and a solver that is trusted only as far as its analytical references pass.
 
 Maxwell keeps the geometry, materials, supports, loads, heat sources, mesh and assumptions next to every result, stores the exact input of each study, and turns a missing fact (how the part is held, where the heat leaves) into a concrete question instead of an invisible guess.
 
@@ -20,11 +20,14 @@ Maxwell keeps the geometry, materials, supports, loads, heat sources, mesh and a
 - **Variant comparison**: `{name, changes: {dotted.path: value}}`; list items are addressed by id or label (`regions.vent.x0`, `boundary.equipment.fy`). Verdicts against the requirements.
 - **Design search (inverse design)**: 1–3 parameters with physical meaning, an objective, requirements; grid search on a coarse mesh, then the best feasible candidates are re-solved on a finer mesh **and on held-out load cases that took no part in the search**; returns the accepted recommendation and the feasible trade-off frontier, not a single "perfect" design.
 - **Geometry from Vulcan's Hoard**: a constant-thickness STL (a Vulcan model id fetched from its local API, or an uploaded file) becomes the profile; openings become void regions at a stated resolution; volume agreement and through-thickness consistency are reported, and parts whose section changes through the thickness are refused.
+- **Refusals instead of guesses**: a body with no path for heat to leave asks where it leaves instead of returning an arbitrary zero; a safety factor needs the yield strength of every material; refinement levels must strictly increase; imported profiles with blind pockets, floors or tapered walls are refused.
 - **Records**: every solve and study is saved with its exact input, output and assumptions (`data/records`).
 
-Worked commissions included: *which vent layout keeps a board with two heat sources under 85 °C* (the right-hand vent fails), and *a bracket compared in steel and aluminium at three thicknesses*, plus a search that rejects the lightest bracket because it breaks under a 25 % heavier held-out load.
+Worked examples included: *which vent layout keeps a board with two heat sources under 85 °C* (the right-hand vent fails), and *a bracket compared in steel and aluminium at three thicknesses*, plus a search that rejects the lightest bracket because it breaks under a 25 % heavier held-out load.
 
 ## Run
+
+Requires Python 3.11 or later.
 
 ```
 python -m venv .venv
@@ -53,35 +56,42 @@ Web page at `/`: problem editor, field map (temperature, displacement, von Mises
 
 Invalid or incomplete problems answer 422 with `{status, error, questions}`.
 
-## MCP (stdio, `python -m maxwell.mcp_server`)
-
-`maxwell_examples`, `maxwell_materials`, `maxwell_check`, `maxwell_solve`, `maxwell_refinement`, `maxwell_compare`, `maxwell_design_search`, `maxwell_verify_reference`, `maxwell_import_geometry`, `maxwell_records`. Listing tools does not solve or write anything.
-
-## Limits (stated, not hidden)
+## Limits
 
 - Two-dimensional: plane stress for elasticity, in-plane conduction for heat (with optional face convection for boards and plates). No 3D solids, fluids, radiation (other than inside a convection coefficient), contact, buckling, plasticity, fatigue, transient or temperature-dependent properties.
 - Geometry is rectangles (exact) or a stepped approximation of an imported profile; curved openings raise local peak stresses.
 - Material values are nominal datasheet figures; confirm them for real parts. A convergent solver can still solve the wrong problem: the conditions are the engineer's responsibility, which is why they are always shown.
 - Pure Python (NumPy/SciPy, BSD licences); no external meshing or solver binaries.
 
-## Integrated corrections (1982)
+## Connection with Faustus and Hoard Hub
 
-Zero-convection edges do not determine a temperature: an isolated body asks where heat leaves instead of returning an arbitrary zero. A valid, isothermal zero-flow solution is accepted within a rounding bound derived from the assembled system; the report includes absolute residual, rounding bound and whether relative balance is rounding-limited.
+`faustus-plugin.json` registers the app as a Faustus plugin. The Hub starts the web application explicitly, on a port that adapts if the default is taken. Faustus gets a panel that shows the current problem, its variants and the search draft (including incomplete JSON) together with the last operation, its exact input and its compact result; the conversation, model and tools stay in Faustus.
 
-A global safety factor requires yield strength for every material. Without a strength requirement, displacements remain available and the factor is undefined when a material strength is missing. A requested factor asks for the missing strength. Supplied strengths must be finite and positive.
+MCP (stdio, `python -m maxwell.mcp_server`) exposes ten tools and starts no HTTP application. Listing tools solves nothing and writes nothing.
 
-Refinement levels must increase strictly and produce finer meshes. Repeated meshes do not establish convergence. Stored studies have unique IDs and are published atomically, including repeated calculations within one second; old record IDs remain readable.
+| Group | Tools |
+| --- | --- |
+| Pure reads (read-only hint, usable in Faustus Plan mode) | `maxwell_examples`, `maxwell_materials`, `maxwell_check` |
+| Solving and studies | `maxwell_solve`, `maxwell_refinement`, `maxwell_compare`, `maxwell_design_search` |
+| References and geometry | `maxwell_verify_reference`, `maxwell_import_geometry` |
+| Records | `maxwell_records` |
 
-Validation:51 tests pass, including15 review regressions, real MCP stdio and discovery without creating data. Brave on an isolated instance: zero convection asks for a heat path, a mixed-material beam asks for unknown yield strength, and an anchored zero-flow plate solves uniformly at20°C. These checks use invented cases and analytical references, not measurements of a real part. No models or GPUs were used.
+The app also carries procedures from the family's skill library for connecting agents (`plate-thermal-stress-check`, `measured-improvement`, `verification-loop`). They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. They are chosen on the skills page (`/api/agent/skills/page`) or in the Hub's Skills tab.
 
-## Constant-thickness geometry correction (1985)
+## Project layout
 
-Before sampling an STL profile, every triangle must belong to an end plane or a side parallel to the extrusion axis. Blind pockets, floors and tapered walls are refused even when all three sample sections happen to agree. The report declares coordinate and face-normal tolerances (the latter allows one part per million for float32 STL rounding). Through holes and straight extrusions remain supported. Vertices and requested resolution must be finite; resolution must be positive.
+| Path | Contents |
+| --- | --- |
+| `maxwell/fem.py`, `model.py` | Finite-element solver and problem model |
+| `maxwell/studies.py`, `service.py` | Refinement, comparison, design search and records |
+| `maxwell/geometry_import.py` | STL profile import |
+| `maxwell/app.py`, `static/` | HTTP API and web page |
+| `maxwell/mcp_server.py` | MCP server |
+| `maxwell/hoard_link/` | Shared Hoard family code |
+| `tests/` | Test suite |
+| `data/records/` | Saved studies |
+| `docs/` | Research notes (Spanish) |
 
-Validation:64 tests pass. An actual box generated by Shannon and Vulcan, previously accepted with a37% volume loss, now asks for a solid3D analysis. A separate120×60×5mm plate with a through opening transfers without volume error. Its displacement converges, while its corner peak stress does not; the refinement report records both outcomes. Reproduction and generated artifacts: `E:/Development/IA/Research/Hangar-2026-11-02/encargo-electronica-cad`.
+## Credits
 
-Native registration: connector `ffea74c7-74d3-40ba-8540-9c620e52ed36`, MCP server `e14f84b3`. Main source and installed dependencies checked; client verification invokes the pure helpers without creating app data. The HTTP application retains its manual stop; isolated QA uses another port. The implementation was integrated by Claude without an approved cross-review; the historical review votes remain unchanged.
-
-## Skills for the agents that connect
-
-This app carries procedures from the skill library of the family's workspace for the agents that connect to it: `plate-thermal-stress-check`, `measured-improvement`, `verification-loop`. They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. The person chooses them on the skills page (`/api/agent/skills/page`) or in the hub's Skills tab; the `skills` block of `faustus-plugin.json` holds what the app asks for by default.
+Pure Python on NumPy and SciPy (BSD licences); no external meshing or solver binaries.
