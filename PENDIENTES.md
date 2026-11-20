@@ -2,4 +2,4 @@
 
 Nada pendiente que pueda resolverse sin hardware.
 
-- Necesita a Luis: contrastar con una pieza real medida (termopar o comparador). Hasta entonces la evidencia es analítica y sintética.
+- Pendiente de comprobación física: contrastar con una pieza real medida (termopar o comparador). Hasta entonces la evidencia es analítica y sintética.
